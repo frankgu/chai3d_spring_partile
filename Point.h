@@ -41,6 +41,14 @@ public:
 	void damping(double timeInterval);
 	// update the position of the point accorrding to the velocity
 	void updatePos();
+	// collision detection with other point
+	bool isCollided(Point *point);
+	// get the radius;
+	double getRadius() { return radius; }
+	// get the velocity
+	cVector3d getVelocity(){ return velocity; }
+	// set the velocity
+	void setVelocity(cVector3d vel) { velocity = vel; }
 
 };
 

@@ -1,7 +1,7 @@
 #include "Spring.h"
 
 
-Spring::Spring(Point *P_a, Point *P_b, cWorld *world)
+Spring::Spring(Point *P_a, Point *P_b, double alength, cWorld *world)
 {
 	a = P_a;
 	b = P_b;
@@ -15,7 +15,7 @@ Spring::Spring(Point *P_a, Point *P_b, cWorld *world)
 	world->addChild(spring);
 
 	// initialize the length of the spring
-	length = cSub(a->point->getPos(), b->point->getPos()).length();
+	length = alength;
 }
 
 Spring::~Spring()

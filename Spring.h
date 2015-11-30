@@ -14,7 +14,7 @@ public:
 
 	cShapeLine *spring;
 
-	Spring(Point *a, Point *b, cWorld *world);
+	Spring(Point *a, Point *b, double alength, cWorld *world);
 	~Spring();
 
 	// get the length of the spring

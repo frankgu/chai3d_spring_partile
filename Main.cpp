@@ -64,14 +64,10 @@ int displayW = 0;
 int displayH = 0;
 
 // a virtual point1 
-Point* point1;
-Point* point2;
-Point* point3;
+std::vector<Point*> points;
 
 // the virtual spring
-Spring* spring1;
-Spring* spring2;
-Spring* spring3;
+std::vector<Spring*> springs;
 
 // a virtual ground
 cMesh* ground;
@@ -120,6 +116,8 @@ void updateGraphics(void);
 // main haptics loop
 void updateHaptics(void);
 
+// sphere collision detection
+void collisionBTPoints();
 
 //===========================================================================
 /*
@@ -150,6 +148,18 @@ int main(int argc, char* argv[])
 	printf("Keyboard Options:\n\n");
 	printf("[x] - Exit application\n");
 	printf("\n\n");
+
+
+	// Get the number of vertices
+	printf("-----------------------------------\n");
+	printf("please input the number of the vetices ( 3 <= x <= 6): ");
+	int numberOfPoints;
+	std::cin >> numberOfPoints;
+
+	if (numberOfPoints < 3 || numberOfPoints > 6)
+	{
+		return 1;
+	}
 
 	// parse first arg to try and locate resources
 	resourceRoot = string(argv[0]).substr(0, string(argv[0]).find_last_of("/\\") + 1);
@@ -226,22 +236,31 @@ int main(int argc, char* argv[])
 
 
 	//-----------------------------------------------------------------------
-	// POINTS/ HAPTIC DEVICES / TOOLS
+	// POINTS / SPRINGS / HAPTIC DEVICES / TOOLS
 	//-----------------------------------------------------------------------
 
 	// create a 3D points and add it to the world
-	point1 = new Point(0.05, world);
-	point2 = new Point(0.05, world);
-	point3 = new Point(0.05, world);
+	for (int i = 0; i < numberOfPoints; i++)
+	{
+		Point *point = new Point(0.05, world);
+		point->point->setPos(cVector3d(0.01 * i, 0.01*i*i*i, 0.01 * i));
+		points.push_back(point);
+	}
 
-	point1->point->setPos(cVector3d(0, 0, 0.4));
-	point2->point->setPos(cVector3d(-0.3, 0.6, 0.4));
-	point3->point->setPos(cVector3d(0.3, 0.6, 0.5));
-
-	// create two line connect theses three points
-	spring1 = new Spring(point1, point2, world);
-	spring2 = new Spring(point2, point3, world);
-	spring3 = new Spring(point1, point3, world);
+	// create the spring
+	for (int i = 0; i < numberOfPoints; i++)
+	{
+		Spring *spring;
+		if (i != (numberOfPoints - 1))
+		{
+			spring = new Spring(points[i], points[i + 1], 0.4, world);
+		}
+		else
+		{
+			spring = new Spring(points[i], points[0], 0.4, world);
+		}
+		springs.push_back(spring);
+	}
 
 	//-----------------------------------------------------------------------
 	// COMPOSE THE VIRTUAL SCENE
@@ -380,7 +399,7 @@ void resizeWindow(int w, int h)
 	ground->getVertex(vertices[1])->setTexCoord(txMax, tyMin);
 	ground->getVertex(vertices[2])->setTexCoord(txMax, tyMax);
 	ground->getVertex(vertices[3])->setTexCoord(txMin, tyMax);
-	
+
 }
 
 //---------------------------------------------------------------------------
@@ -469,50 +488,59 @@ void updateHaptics(void)
 		simClock.reset();
 		simClock.start();
 
-		point1->resetAcceleration();
-		point2->resetAcceleration();
-		point3->resetAcceleration();
-
+		for (int i = 0; i < points.size(); i++)
+		{
+			points[i]->resetAcceleration();
+		}
 
 		/*
 		*	calculate the all different kinds of froce and apply them onto the points
 		*/
+
 		// apply the gravity for to the point
-		point1->applyAcceleration(cVector3d(0, 0, -9.81));
-		point2->applyAcceleration(cVector3d(0, 0, -9.81));
-		point3->applyAcceleration(cVector3d(0, 0, -9.81));
+		for (int i = 0; i < points.size(); i++)
+		{
+			points[i]->applyAcceleration(cVector3d(0, 0, -9.81));
+		}
 
 		// calculate the spring force and apply them to the point accelaration
-		spring1->applyForce();
-		spring2->applyForce();
-		spring3->applyForce();
+		for (int i = 0; i < springs.size(); i++)
+		{
+			springs[i]->applyForce();
+		}
 
 		// update the velocity according to the acceleration 
-		point1->updateVel(timeInterval);
-		point2->updateVel(timeInterval);
-		point3->updateVel(timeInterval);
+		for (int i = 0; i < points.size(); i++)
+		{
+			points[i]->updateVel(timeInterval);
+		}
 
-		// update the veolocity of the point according to the collision
-		point1->collisionUpdate(ground);
-		point2->collisionUpdate(ground);
-		point3->collisionUpdate(ground);
+		// update the velocity of the point according to the collision
+		for (int i = 0; i < points.size(); i++)
+		{
+			points[i]->collisionUpdate(ground);
+		}
 
+		// update the velocity according to the collision between points
+		collisionBTPoints();
 
 		// add some damping too
-		point1->damping(timeInterval);
-		point2->damping(timeInterval);
-		point3->damping(timeInterval);
+		for (int i = 0; i < points.size(); i++)
+		{
+			points[i]->damping(timeInterval);
+		}
 
 		// compute the next tranlation configuration of the point
-		point1->updatePos();
-		point2->updatePos(); 
-		point3->updatePos();
-
+		for (int i = 0; i < points.size(); i++)
+		{
+			points[i]->updatePos();
+		}
 
 		// update the position of the spring
-		spring1->updatePos();
-		spring2->updatePos();
-		spring3->updatePos();
+		for (int i = 0; i < springs.size(); i++)
+		{
+			springs[i]->updatePos();
+		}
 
 	}
 
@@ -522,3 +550,25 @@ void updateHaptics(void)
 
 //---------------------------------------------------------------------------
 
+void collisionBTPoints()
+{
+	// check the collision between all the points
+	for (int iterationNum = 0; iterationNum < points.size() - 1; iterationNum++)
+	{
+		for (int i = iterationNum; i < points.size() - 1; i++)
+		{
+			if (points[iterationNum]->isCollided(points[i + 1]))
+			{
+				// these two shperes collide with each other, apply force betweeen them
+				
+				points[iterationNum]->
+				applyAcceleration((points[iterationNum]->point->getPos() -
+				points[i + 1]->point->getPos())*500);
+				points[i + 1]->
+				applyAcceleration((points[i + 1]->point->getPos() -
+				points[iterationNum]->point->getPos())*500);
+				
+			}
+		}
+	}
+}
