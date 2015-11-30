@@ -35,7 +35,7 @@ Professional Edition License.
 //---------------------------------------------------------------------------
 
 // initial size (width/height) in pixels of the display window
-const int WINDOW_SIZE_W = 512;
+const int WINDOW_SIZE_W = 800;
 const int WINDOW_SIZE_H = 512;
 
 // mouse menu options (right button)
@@ -86,6 +86,12 @@ string resourceRoot;
 
 // has exited haptics simulation thread
 bool simulationFinished = false;
+
+// a haptic device handler
+cHapticDeviceHandler *handler;
+cGenericHapticDevice *hapticDevice;
+// HIP of haptic device
+cShapeSphere *cursor;
 
 //---------------------------------------------------------------------------
 // DECLARED MACROS
@@ -262,6 +268,24 @@ int main(int argc, char* argv[])
 		springs.push_back(spring);
 	}
 
+	// create a haptic device handler
+	handler = new cHapticDeviceHandler();
+	// get access to the first available haptic device
+	handler->getDevice(hapticDevice, 0);
+	hapticDevice->open();
+	hapticDevice->initialize();
+
+	// create a cursor 
+	cursor = new cShapeSphere(0.05);
+	// set the color of the cursor
+	cMaterial mat;
+	mat.m_ambient.set(0.5, 0.2, 0.0);
+	mat.m_diffuse.set(1.0, 0.5, 0.0);
+	mat.m_specular.set(1.0, 1.0, 1.0);
+	cursor->m_material = mat;
+	// add the cursor to the world
+	world->addChild(cursor);
+
 	//-----------------------------------------------------------------------
 	// COMPOSE THE VIRTUAL SCENE
 	//-----------------------------------------------------------------------
@@ -279,7 +303,7 @@ int main(int argc, char* argv[])
 	/////////////////////////////////////////////////////////////////////////
 	// create the ground
 	/////////////////////////////////////////////////////////////////////////
-	const double HALFSIZE = 1;
+	const double HALFSIZE = 2;
 
 	// face -x
 	vertices[0] = ground->newVertex(-HALFSIZE, HALFSIZE, -0.5);
@@ -302,7 +326,7 @@ int main(int argc, char* argv[])
 
 	// display triangle normals
 	ground->setShowNormals(true);
-
+	
 	// set length and color of normals
 	ground->setNormalsProperties(0.1, cColorf(1.0, 0.0, 0.0), true);
 
@@ -311,7 +335,6 @@ int main(int argc, char* argv[])
 
 	// compute collision detection algorithm
 	ground->createAABBCollisionDetector(1.01 * 0.05, true, false);
-
 
 
 	//-----------------------------------------------------------------------
@@ -493,6 +516,19 @@ void updateHaptics(void)
 			points[i]->resetAcceleration();
 		}
 
+		// update the cursor position and orientation of cursor
+		cVector3d newPosition;
+		hapticDevice->getPosition(newPosition);
+		// scale the haptic device position and set this to the cursor
+		cursor->setPos(newPosition * 5 * ground->getVertex(0)->getPos().y);
+		// limit the position of the cursor above the ground
+		if (cursor->getPos().z - cursor->getRadius() < ground->getVertex(0)->getPos().z)
+		{
+			// set the z value stick to the ground
+			cursor->setPos(cVector3d(cursor->getPos().x, 
+				cursor->getPos().y, ground->getVertex(0)->getPos().z + cursor->getRadius()));
+		}
+
 		/*
 		*	calculate the all different kinds of froce and apply them onto the points
 		*/
@@ -509,6 +545,20 @@ void updateHaptics(void)
 			springs[i]->applyForce();
 		}
 
+		// update the velocity according to the collision between points
+		collisionBTPoints();
+
+		// check the collision between the cursor and the other point
+		for (int i = 0; i < points.size(); i++)
+		{
+			if (points[i]->isCollided(cursor))
+			{
+				points[i]->
+					applyAcceleration((points[i]->point->getPos() -
+					cursor->getPos()) * 500);
+			}
+		}
+
 		// update the velocity according to the acceleration 
 		for (int i = 0; i < points.size(); i++)
 		{
@@ -519,10 +569,7 @@ void updateHaptics(void)
 		for (int i = 0; i < points.size(); i++)
 		{
 			points[i]->collisionUpdate(ground);
-		}
-
-		// update the velocity according to the collision between points
-		collisionBTPoints();
+		}		
 
 		// add some damping too
 		for (int i = 0; i < points.size(); i++)

@@ -71,7 +71,13 @@ void Point::updatePos()
 bool Point::isCollided(Point *point)
 {
 	// the length between two sphere
-	double d = cSub(this->point->getPos(), point->point->getPos()).length();
+	return isCollided(point->point);
+}
+
+bool Point::isCollided(cShapeSphere *sphere)
+{
+	// the length between two sphere
+	double d = cSub(this->point->getPos(), sphere->getPos()).length();
 	double threshold = radius + point->getRadius();
 	if (d > threshold)
 	{
