@@ -43,6 +43,7 @@ public:
 	void updatePos();
 	// collision detection with other point
 	bool isCollided(Point *point);
+	bool isCollided(cShapeSphere *sphere);
 	// get the radius;
 	double getRadius() { return radius; }
 	// get the velocity

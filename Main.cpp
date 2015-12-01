@@ -35,7 +35,7 @@ Professional Edition License.
 //---------------------------------------------------------------------------
 
 // initial size (width/height) in pixels of the display window
-const int WINDOW_SIZE_W = 512;
+const int WINDOW_SIZE_W = 800;
 const int WINDOW_SIZE_H = 512;
 
 // mouse menu options (right button)
@@ -66,6 +66,10 @@ int displayH = 0;
 // a virtual point1 
 std::vector<Point*> points;
 
+// the balance point
+Point *balancePoint;
+std::vector<Spring*> balanceSprings;
+
 // the virtual spring
 std::vector<Spring*> springs;
 
@@ -86,6 +90,25 @@ string resourceRoot;
 
 // has exited haptics simulation thread
 bool simulationFinished = false;
+
+// a haptic device handler
+cHapticDeviceHandler *handler;
+cGenericHapticDevice *hapticDevice;
+// HIP of haptic device
+cShapeSphere *cursor;
+
+// the camera position
+double cameraAngleH;
+double cameraAngleV;
+double cameraDistance;
+cVector3d cameraPosition;
+
+// mouse position
+int mouseX, mouseY;
+int mouseButton;
+
+// camera status
+bool flagCameraInMotion;
 
 //---------------------------------------------------------------------------
 // DECLARED MACROS
@@ -118,6 +141,15 @@ void updateHaptics(void);
 
 // sphere collision detection
 void collisionBTPoints();
+
+// update the camera position
+void updateCameraPosition();
+
+// callback to handle mouse motion
+void mouseMove(int x, int y);
+
+// callback to handle mouse click
+void mouseClick(int button, int state, int x, int y);
 
 //===========================================================================
 /*
@@ -181,9 +213,18 @@ int main(int argc, char* argv[])
 	world->addChild(camera);
 
 	// position and oriente the camera
+
+	/*
 	camera->set(cVector3d(3.0, 0.0, 0.0),    // camera position (eye)
-		cVector3d(0.0, 0.0, 0.0),    // lookat position (target)
-		cVector3d(0.0, 0.0, 1.0));   // direction of the "up" vector
+	cVector3d(0.0, 0.0, 0.0),    // lookat position (target)
+	cVector3d(0.0, 0.0, 1.0));   // direction of the "up" vector
+	*/
+	// define a default position of the camera(described in spherical coordinates)
+	cameraAngleH = 0;
+	cameraAngleV = 45;
+	cameraDistance = 4.0; // object is unit box put the camera at 1.8 * box 
+	updateCameraPosition();
+
 
 	// set the near and far clipping planes of the camera
 	// anything in front/behind these clipping planes will not be rendered
@@ -239,28 +280,136 @@ int main(int argc, char* argv[])
 	// POINTS / SPRINGS / HAPTIC DEVICES / TOOLS
 	//-----------------------------------------------------------------------
 
+
 	// create a 3D points and add it to the world
+	Point *point1;
+	Point *point2;
+	Point *point3;
+	Point *point4;
+	Point *point5;
+	Point *point6;
+
+	switch (numberOfPoints)
+	{
+	case 3:
+		point1 = new Point(0.05, world);
+		point2 = new Point(0.05, world);
+		point3 = new Point(0.05, world);
+		point1->point->setPos(cVector3d(-0.346, 0, 0.01));
+		point2->point->setPos(cVector3d(0.346, 0.2, 0.02));
+		point3->point->setPos(cVector3d(0.346, -0.2, 0.03));
+		points.push_back(point1);
+		points.push_back(point2);
+		points.push_back(point3);
+		break;
+	case 4:
+		point1 = new Point(0.05, world);
+		point2 = new Point(0.05, world);
+		point3 = new Point(0.05, world);
+		point4 = new Point(0.05, world);
+		point1->point->setPos(cVector3d(-0.2, 0.2, 0.01));
+		point2->point->setPos(cVector3d(-0.2, -0.2, 0.02));
+		point3->point->setPos(cVector3d(0.2, -0.2, 0.03));
+		point4->point->setPos(cVector3d(0.2, 0.2, 0.04));
+		points.push_back(point1);
+		points.push_back(point2);
+		points.push_back(point3);
+		points.push_back(point4);
+		break;
+	case 5:
+		point1 = new Point(0.05, world);
+		point2 = new Point(0.05, world);
+		point3 = new Point(0.05, world);
+		point4 = new Point(0.05, world);
+		point5 = new Point(0.05, world);
+		point1->point->setPos(cVector3d(-0.2, 0, 0.01));
+		point2->point->setPos(cVector3d(0, 0.2, 0.02));
+		point3->point->setPos(cVector3d(0.2, 0.15, 0.03));
+		point4->point->setPos(cVector3d(0.2, -0.15, 0.04));
+		point5->point->setPos(cVector3d(0, -0.2, 0.05));
+		points.push_back(point1);
+		points.push_back(point2);
+		points.push_back(point3);
+		points.push_back(point4);
+		points.push_back(point5);
+		break;
+	case 6:
+		point1 = new Point(0.05, world);
+		point2 = new Point(0.05, world);
+		point3 = new Point(0.05, world);
+		point4 = new Point(0.05, world);
+		point5 = new Point(0.05, world);
+		point6 = new Point(0.05, world);
+		point1->point->setPos(cVector3d(-0.4, 0.2, 0.01));
+		point2->point->setPos(cVector3d(0, 0.4, 0.02));
+		point3->point->setPos(cVector3d(0.4, 0.2, 0.03));
+		point4->point->setPos(cVector3d(0.4, -0.2, 0.04));
+		point5->point->setPos(cVector3d(0, -0.4, 0.05));
+		point6->point->setPos(cVector3d(-0.4, -0.2, 0.06));
+		points.push_back(point1);
+		points.push_back(point2);
+		points.push_back(point3);
+		points.push_back(point4);
+		points.push_back(point5);
+		points.push_back(point6);
+		break;
+	}
+	/*
 	for (int i = 0; i < numberOfPoints; i++)
 	{
 		Point *point = new Point(0.05, world);
-		point->point->setPos(cVector3d(0.01 * i, 0.01*i*i*i, 0.01 * i));
+		point->point->setPos(cVector3d(0.1 * i - 0.1, 0.1*i*i - 0.1, 0.1 * i - 0.1));
 		points.push_back(point);
 	}
-
+	*/
 	// create the spring
+	const double springLength = 0.4;
 	for (int i = 0; i < numberOfPoints; i++)
 	{
 		Spring *spring;
 		if (i != (numberOfPoints - 1))
 		{
-			spring = new Spring(points[i], points[i + 1], 0.4, world);
+			spring = new Spring(points[i], points[i + 1], springLength, world);
 		}
 		else
 		{
-			spring = new Spring(points[i], points[0], 0.4, world);
+			spring = new Spring(points[i], points[0], springLength, world);
 		}
 		springs.push_back(spring);
 	}
+
+	// create the balance point and the spring
+	balancePoint = new Point(0.05, world);
+	// doesn't show the balance point 
+	balancePoint->point->setShowEnabled(false);
+	for (int i = 0; i < numberOfPoints; i++)
+	{
+		// calculate the balance spring length
+		double balanceSpringLength = springLength / 2 / sin(cDegToRad(180 / numberOfPoints));
+		// initialize the balance spring
+		Spring *spring = new Spring(balancePoint, points[i], balanceSpringLength, world);
+		spring->spring->setShowEnabled(false);
+		balanceSprings.push_back(spring);
+	}
+
+	// create a haptic device handler
+	handler = new cHapticDeviceHandler();
+	// get access to the first available haptic device
+	handler->getDevice(hapticDevice, 0);
+	hapticDevice->open();
+	hapticDevice->initialize();
+
+	// create a cursor 
+	cursor = new cShapeSphere(0.05);
+
+	// set the color of the cursor
+	cMaterial mat;
+	mat.m_ambient.set(0.5, 0.2, 0.0);
+	mat.m_diffuse.set(1.0, 0.5, 0.0);
+	mat.m_specular.set(1.0, 1.0, 1.0);
+	cursor->m_material = mat;
+	// add the cursor to the world
+	world->addChild(cursor);
 
 	//-----------------------------------------------------------------------
 	// COMPOSE THE VIRTUAL SCENE
@@ -279,7 +428,7 @@ int main(int argc, char* argv[])
 	/////////////////////////////////////////////////////////////////////////
 	// create the ground
 	/////////////////////////////////////////////////////////////////////////
-	const double HALFSIZE = 1;
+	const double HALFSIZE = 2;
 
 	// face -x
 	vertices[0] = ground->newVertex(-HALFSIZE, HALFSIZE, -0.5);
@@ -313,7 +462,6 @@ int main(int argc, char* argv[])
 	ground->createAABBCollisionDetector(1.01 * 0.05, true, false);
 
 
-
 	//-----------------------------------------------------------------------
 	// OPEN GL - WINDOW DISPLAY
 	//-----------------------------------------------------------------------
@@ -334,6 +482,8 @@ int main(int argc, char* argv[])
 	glutInitDisplayMode(GLUT_RGB | GLUT_DEPTH | GLUT_DOUBLE);
 	glutCreateWindow(argv[0]);
 	glutDisplayFunc(updateGraphics);
+	glutMotionFunc(mouseMove);
+	glutMouseFunc(mouseClick);
 	glutKeyboardFunc(keySelect);
 	glutReshapeFunc(resizeWindow);
 	glutSetWindowTitle("CHAI 3D");
@@ -448,8 +598,42 @@ void close(void)
 
 //---------------------------------------------------------------------------
 
+void updateCameraPosition()
+{
+	// check values
+	if (cameraDistance < 0.1) { cameraDistance = 0.1; }
+	if (cameraAngleV > 89) { cameraAngleV = 89; }
+	if (cameraAngleV < -89) { cameraAngleV = -89; }
+
+	// compute position of camera in space
+	cVector3d pos = cAdd(
+		cameraPosition,
+		cVector3d(
+		cameraDistance * cCosDeg(cameraAngleH) * cCosDeg(cameraAngleV),
+		cameraDistance * cSinDeg(cameraAngleH) * cCosDeg(cameraAngleV),
+		cameraDistance * cSinDeg(cameraAngleV)
+		)
+		);
+
+	// compute lookat position
+	cVector3d lookat = cameraPosition;
+
+	// define role orientation of camera
+	cVector3d up(0.0, 0.0, 1.0);
+
+	// set new position to camera
+	camera->set(pos, lookat, up);
+
+	// recompute global positions
+	world->computeGlobalPositions(true);
+}
+
+//---------------------------------------------------------------------------
+
 void updateGraphics(void)
 {
+	updateCameraPosition();
+
 	// render world
 	camera->renderView(displayW, displayH);
 
@@ -466,6 +650,54 @@ void updateGraphics(void)
 	{
 		glutPostRedisplay();
 	}
+}
+
+//---------------------------------------------------------------------------
+
+void cameraMotion(int x, int y) {
+	if (mouseButton == GLUT_MIDDLE_BUTTON)
+	{
+		cameraDistance = cameraDistance - 0.01 * (y - mouseY);
+	}
+
+	else if (mouseButton == GLUT_LEFT_BUTTON)
+	{
+		cameraAngleH = cameraAngleH - (x - mouseX);
+		cameraAngleV = cameraAngleV + (y - mouseY);
+	}
+
+	updateCameraPosition();
+}
+
+//---------------------------------------------------------------------------
+void mouseClick(int button, int state, int x, int y)
+{
+	// mouse button down
+	if (state == GLUT_DOWN)
+	{
+		flagCameraInMotion = true;
+		mouseX = x;
+		mouseY = y;
+		mouseButton = button;
+	}
+
+	// mouse button up
+	else if (state == GLUT_UP)
+	{
+		flagCameraInMotion = false;
+	}
+}
+
+//---------------------------------------------------------------------------
+
+void mouseMove(int x, int y)
+{
+	if (flagCameraInMotion)
+	{
+		cameraMotion(x, y);
+	}
+	mouseX = x;
+	mouseY = y;
 }
 
 //---------------------------------------------------------------------------
@@ -492,6 +724,20 @@ void updateHaptics(void)
 		{
 			points[i]->resetAcceleration();
 		}
+		balancePoint->resetAcceleration();
+
+		// update the cursor position and orientation of cursor
+		cVector3d newPosition;
+		hapticDevice->getPosition(newPosition);
+		// scale the haptic device position and set this to the cursor
+		cursor->setPos(newPosition * 5 * ground->getVertex(0)->getPos().y);
+		// limit the position of the cursor above the ground
+		if (cursor->getPos().z - cursor->getRadius() < ground->getVertex(0)->getPos().z)
+		{
+			// set the z value stick to the ground
+			cursor->setPos(cVector3d(cursor->getPos().x,
+				cursor->getPos().y, ground->getVertex(0)->getPos().z + cursor->getRadius()));
+		}
 
 		/*
 		*	calculate the all different kinds of froce and apply them onto the points
@@ -502,11 +748,27 @@ void updateHaptics(void)
 		{
 			points[i]->applyAcceleration(cVector3d(0, 0, -9.81));
 		}
+		balancePoint->applyAcceleration(cVector3d(0, 0, -9.81));
 
 		// calculate the spring force and apply them to the point accelaration
 		for (int i = 0; i < springs.size(); i++)
 		{
 			springs[i]->applyForce();
+			balanceSprings[i]->applyForce();
+		}
+
+		// update the velocity according to the collision between points
+		collisionBTPoints();
+
+		// check the collision between the cursor and the other point
+		for (int i = 0; i < points.size(); i++)
+		{
+			if (points[i]->isCollided(cursor))
+			{
+				points[i]->
+					applyAcceleration((points[i]->point->getPos() -
+					cursor->getPos()) * 500);
+			}
 		}
 
 		// update the velocity according to the acceleration 
@@ -514,32 +776,34 @@ void updateHaptics(void)
 		{
 			points[i]->updateVel(timeInterval);
 		}
+		balancePoint->updateVel(timeInterval);
 
 		// update the velocity of the point according to the collision
 		for (int i = 0; i < points.size(); i++)
 		{
 			points[i]->collisionUpdate(ground);
 		}
-
-		// update the velocity according to the collision between points
-		collisionBTPoints();
+		balancePoint->collisionUpdate(ground);
 
 		// add some damping too
 		for (int i = 0; i < points.size(); i++)
 		{
 			points[i]->damping(timeInterval);
 		}
+		balancePoint->damping(timeInterval);
 
 		// compute the next tranlation configuration of the point
 		for (int i = 0; i < points.size(); i++)
 		{
 			points[i]->updatePos();
 		}
+		balancePoint->updatePos();
 
 		// update the position of the spring
 		for (int i = 0; i < springs.size(); i++)
 		{
 			springs[i]->updatePos();
+			balanceSprings[i]->updatePos();
 		}
 
 	}
@@ -560,14 +824,14 @@ void collisionBTPoints()
 			if (points[iterationNum]->isCollided(points[i + 1]))
 			{
 				// these two shperes collide with each other, apply force betweeen them
-				
+
 				points[iterationNum]->
-				applyAcceleration((points[iterationNum]->point->getPos() -
-				points[i + 1]->point->getPos())*500);
+					applyAcceleration((points[iterationNum]->point->getPos() -
+					points[i + 1]->point->getPos()) * 500);
 				points[i + 1]->
-				applyAcceleration((points[i + 1]->point->getPos() -
-				points[iterationNum]->point->getPos())*500);
-				
+					applyAcceleration((points[i + 1]->point->getPos() -
+					points[iterationNum]->point->getPos()) * 500);
+
 			}
 		}
 	}
