@@ -63,7 +63,7 @@ cBitmap* logo;
 int displayW = 0;
 int displayH = 0;
 
-// a virtual point1 
+// a virtual point1
 std::vector<Point*> points;
 
 // the balance point
@@ -222,7 +222,7 @@ int main(int argc, char* argv[])
 	// define a default position of the camera(described in spherical coordinates)
 	cameraAngleH = 0;
 	cameraAngleV = 45;
-	cameraDistance = 4.0; // object is unit box put the camera at 1.8 * box 
+	cameraDistance = 4.0; // object is unit box put the camera at 1.8 * box
 	updateCameraPosition();
 
 
@@ -380,7 +380,7 @@ int main(int argc, char* argv[])
 
 	// create the balance point and the spring
 	balancePoint = new Point(0.05, world);
-	// doesn't show the balance point 
+	// doesn't show the balance point
 	balancePoint->point->setShowEnabled(false);
 	for (int i = 0; i < numberOfPoints; i++)
 	{
@@ -399,7 +399,7 @@ int main(int argc, char* argv[])
 	hapticDevice->open();
 	hapticDevice->initialize();
 
-	// create a cursor 
+	// create a cursor
 	cursor = new cShapeSphere(0.05);
 
 	// set the color of the cursor
@@ -436,7 +436,7 @@ int main(int argc, char* argv[])
 	vertices[2] = ground->newVertex(HALFSIZE, -HALFSIZE, -0.5);
 	vertices[3] = ground->newVertex(HALFSIZE, HALFSIZE, -0.5);
 
-	// create the angle 
+	// create the angle
 	ground->newTriangle(vertices[0], vertices[1], vertices[2]);
 	ground->newTriangle(vertices[0], vertices[2], vertices[3]);
 
@@ -739,6 +739,19 @@ void updateHaptics(void)
 				cursor->getPos().y, ground->getVertex(0)->getPos().z + cursor->getRadius()));
 		}
 
+		// update the cursor position and orientation of cursor
+		cVector3d newPosition;
+		hapticDevice->getPosition(newPosition);
+		// scale the haptic device position and set this to the cursor
+		cursor->setPos(newPosition * 5 * ground->getVertex(0)->getPos().y);
+		// limit the position of the cursor above the ground
+		if (cursor->getPos().z - cursor->getRadius() < ground->getVertex(0)->getPos().z)
+		{
+			// set the z value stick to the ground
+			cursor->setPos(cVector3d(cursor->getPos().x,
+				cursor->getPos().y, ground->getVertex(0)->getPos().z + cursor->getRadius()));
+		}
+
 		/*
 		*	calculate the all different kinds of froce and apply them onto the points
 		*/
@@ -771,7 +784,21 @@ void updateHaptics(void)
 			}
 		}
 
-		// update the velocity according to the acceleration 
+		// update the velocity according to the collision between points
+		collisionBTPoints();
+
+		// check the collision between the cursor and the other point
+		for (int i = 0; i < points.size(); i++)
+		{
+			if (points[i]->isCollided(cursor))
+			{
+				points[i]->
+					applyAcceleration((points[i]->point->getPos() -
+					cursor->getPos()) * 500);
+			}
+		}
+
+		// update the velocity according to the acceleration
 		for (int i = 0; i < points.size(); i++)
 		{
 			points[i]->updateVel(timeInterval);
