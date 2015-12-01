@@ -322,11 +322,11 @@ int main(int argc, char* argv[])
 		point3 = new Point(0.05, world);
 		point4 = new Point(0.05, world);
 		point5 = new Point(0.05, world);
-		point1->point->setPos(cVector3d(-0.2, 0, 0.01));
-		point2->point->setPos(cVector3d(0, 0.2, 0.02));
-		point3->point->setPos(cVector3d(0.2, 0.15, 0.03));
-		point4->point->setPos(cVector3d(0.2, -0.15, 0.04));
-		point5->point->setPos(cVector3d(0, -0.2, 0.05));
+		point1->point->setPos(cVector3d(-0.3, 0, 0.01));
+		point2->point->setPos(cVector3d(0, 0.3, 0.02));
+		point3->point->setPos(cVector3d(0.3, 0.2, 0.03));
+		point4->point->setPos(cVector3d(0.3, -0.2, 0.04));
+		point5->point->setPos(cVector3d(0, -0.3, 0.05));
 		points.push_back(point1);
 		points.push_back(point2);
 		points.push_back(point3);
@@ -725,19 +725,6 @@ void updateHaptics(void)
 			points[i]->resetAcceleration();
 		}
 		balancePoint->resetAcceleration();
-
-		// update the cursor position and orientation of cursor
-		cVector3d newPosition;
-		hapticDevice->getPosition(newPosition);
-		// scale the haptic device position and set this to the cursor
-		cursor->setPos(newPosition * 5 * ground->getVertex(0)->getPos().y);
-		// limit the position of the cursor above the ground
-		if (cursor->getPos().z - cursor->getRadius() < ground->getVertex(0)->getPos().z)
-		{
-			// set the z value stick to the ground
-			cursor->setPos(cVector3d(cursor->getPos().x,
-				cursor->getPos().y, ground->getVertex(0)->getPos().z + cursor->getRadius()));
-		}
 
 		// update the cursor position and orientation of cursor
 		cVector3d newPosition;
